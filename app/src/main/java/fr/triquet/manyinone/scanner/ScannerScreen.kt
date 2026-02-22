@@ -26,6 +26,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -37,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.google.mlkit.vision.barcode.common.Barcode
+import fr.triquet.manyinone.loyalty.BarcodeFormatMapper
 import java.util.concurrent.Executors
 
 @Composable
@@ -48,6 +49,11 @@ fun ScannerScreen(
     val lifecycleOwner = LocalLifecycleOwner.current
     var scannedValue by remember { mutableStateOf<String?>(null) }
     var scannedFormat by remember { mutableStateOf<String?>(null) }
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
+
+    DisposableEffect(Unit) {
+        onDispose { analysisExecutor.shutdown() }
+    }
 
     Box(modifier = Modifier.fillMaxSize()) {
         AndroidView(
@@ -67,11 +73,11 @@ fun ScannerScreen(
                         .build()
                         .also {
                             it.setAnalyzer(
-                                Executors.newSingleThreadExecutor(),
+                                analysisExecutor,
                                 BarcodeAnalyzer { barcodes ->
                                     barcodes.firstOrNull()?.let { barcode ->
                                         scannedValue = barcode.rawValue
-                                        scannedFormat = barcodeFormatName(barcode.format)
+                                        scannedFormat = BarcodeFormatMapper.fromMlKit(barcode.format)
                                     }
                                 }
                             )
@@ -154,24 +160,5 @@ fun ScannerScreen(
                 }
             }
         }
-    }
-}
-
-private fun barcodeFormatName(format: Int): String {
-    return when (format) {
-        Barcode.FORMAT_QR_CODE -> "QR Code"
-        Barcode.FORMAT_EAN_13 -> "EAN-13"
-        Barcode.FORMAT_EAN_8 -> "EAN-8"
-        Barcode.FORMAT_UPC_A -> "UPC-A"
-        Barcode.FORMAT_UPC_E -> "UPC-E"
-        Barcode.FORMAT_CODE_128 -> "Code 128"
-        Barcode.FORMAT_CODE_39 -> "Code 39"
-        Barcode.FORMAT_CODE_93 -> "Code 93"
-        Barcode.FORMAT_ITF -> "ITF"
-        Barcode.FORMAT_PDF417 -> "PDF417"
-        Barcode.FORMAT_AZTEC -> "Aztec"
-        Barcode.FORMAT_DATA_MATRIX -> "Data Matrix"
-        Barcode.FORMAT_CODABAR -> "Codabar"
-        else -> "Barcode"
     }
 }

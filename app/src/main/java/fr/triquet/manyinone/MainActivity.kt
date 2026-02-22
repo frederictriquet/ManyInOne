@@ -1,8 +1,11 @@
 package fr.triquet.manyinone
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -20,6 +23,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -32,6 +36,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -105,7 +110,7 @@ private fun MainApp() {
                         0 -> CameraPermissionScreen(
                             onSaveAsCard = { value, format ->
                                 navController.navigate(
-                                    "${Routes.ADD_CARD}?value=$value&format=$format"
+                                    "${Routes.ADD_CARD}?value=${Uri.encode(value)}&format=${Uri.encode(format)}"
                                 )
                             },
                         )
@@ -180,11 +185,17 @@ private fun CameraPermissionScreen(
             ) == PackageManager.PERMISSION_GRANTED
         )
     }
+    var permissionDeniedPermanently by remember { mutableStateOf(false) }
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted ->
         hasCameraPermission = granted
+        if (!granted) {
+            val activity = context as? android.app.Activity
+            permissionDeniedPermanently = activity != null &&
+                !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)
+        }
     }
 
     if (hasCameraPermission) {
@@ -203,14 +214,35 @@ private fun CameraPermissionScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = "This app needs access to your camera to scan barcodes and QR codes.",
+                text = if (permissionDeniedPermanently)
+                    "Camera permission was denied. Please enable it in Settings to use the scanner."
+                else
+                    "This app needs access to your camera to scan barcodes and QR codes.",
                 style = MaterialTheme.typography.bodyMedium
             )
             Spacer(modifier = Modifier.height(24.dp))
-            Button(onClick = {
-                launcher.launch(Manifest.permission.CAMERA)
-            }) {
-                Text("Allow camera")
+            if (permissionDeniedPermanently) {
+                Button(onClick = {
+                    context.startActivity(
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                            data = Uri.fromParts("package", context.packageName, null)
+                        }
+                    )
+                }) {
+                    Text("Open Settings")
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(onClick = {
+                    launcher.launch(Manifest.permission.CAMERA)
+                }) {
+                    Text("Try again")
+                }
+            } else {
+                Button(onClick = {
+                    launcher.launch(Manifest.permission.CAMERA)
+                }) {
+                    Text("Allow camera")
+                }
             }
         }
     }

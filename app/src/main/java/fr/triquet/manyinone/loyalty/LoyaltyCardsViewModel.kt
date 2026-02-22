@@ -16,6 +16,8 @@ class LoyaltyCardsViewModel(application: Application) : AndroidViewModel(applica
     val cards: StateFlow<List<LoyaltyCard>> = dao.getAll()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    suspend fun getById(id: Long): LoyaltyCard? = dao.getById(id)
+
     fun addCard(name: String, value: String, format: String, color: Int) {
         viewModelScope.launch {
             dao.insert(LoyaltyCard(name = name, barcodeValue = value, barcodeFormat = format, color = color))

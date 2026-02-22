@@ -45,6 +45,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,8 +61,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.compose.runtime.LaunchedEffect
-import fr.triquet.manyinone.data.local.AppDatabase
 import fr.triquet.manyinone.data.local.LoyaltyCard
 import fr.triquet.manyinone.scanner.BarcodeAnalyzer
 import java.util.concurrent.Executors
@@ -87,9 +86,8 @@ fun AddCardScreen(
     val context = LocalContext.current
 
     if (isEditing) {
-        val dao = remember { AppDatabase.getInstance(context).loyaltyCardDao() }
         LaunchedEffect(editCardId) {
-            dao.getById(editCardId!!)?.let { card ->
+            viewModel.getById(editCardId!!)?.let { card ->
                 existingCard = card
                 name = card.name
                 barcodeValue = card.barcodeValue
@@ -242,7 +240,7 @@ private fun ColorPicker(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(color.toLong() or 0xFF000000L), CircleShape)
+                    .background(Color(color.toUInt().toLong()), CircleShape)
                     .then(
                         if (isSelected) Modifier.border(3.dp, MaterialTheme.colorScheme.onSurface, CircleShape)
                         else Modifier
@@ -308,6 +306,7 @@ private fun EmbeddedScanner(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
+    val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
     Box(
         modifier = Modifier
@@ -320,6 +319,7 @@ private fun EmbeddedScanner(
         DisposableEffect(Unit) {
             onDispose {
                 cameraProvider?.unbindAll()
+                analysisExecutor.shutdown()
             }
         }
 
@@ -341,11 +341,11 @@ private fun EmbeddedScanner(
                         .build()
                         .also {
                             it.setAnalyzer(
-                                Executors.newSingleThreadExecutor(),
+                                analysisExecutor,
                                 BarcodeAnalyzer { barcodes ->
                                     barcodes.firstOrNull()?.let { barcode ->
                                         val value = barcode.rawValue ?: return@BarcodeAnalyzer
-                                        val format = barcodeFormatNameFromMlKit(barcode.format)
+                                        val format = BarcodeFormatMapper.fromMlKit(barcode.format)
                                         onScanned(value, format)
                                     }
                                 },
@@ -374,24 +374,5 @@ private fun EmbeddedScanner(
             style = MaterialTheme.typography.labelMedium,
             color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f),
         )
-    }
-}
-
-private fun barcodeFormatNameFromMlKit(format: Int): String {
-    return when (format) {
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_QR_CODE -> "QR Code"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_13 -> "EAN-13"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_EAN_8 -> "EAN-8"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_A -> "UPC-A"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_UPC_E -> "UPC-E"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_128 -> "Code 128"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_39 -> "Code 39"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODE_93 -> "Code 93"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_ITF -> "ITF"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_PDF417 -> "PDF417"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_AZTEC -> "Aztec"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_DATA_MATRIX -> "Data Matrix"
-        com.google.mlkit.vision.barcode.common.Barcode.FORMAT_CODABAR -> "Codabar"
-        else -> "QR Code"
     }
 }

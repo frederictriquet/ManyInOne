@@ -1,6 +1,7 @@
 package fr.triquet.manyinone.loyalty
 
 import android.graphics.Bitmap
+import android.util.Log
 import androidx.compose.foundation.Image
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -8,7 +9,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import com.google.zxing.MultiFormatWriter
-import com.google.zxing.common.BitMatrix
+
+private const val TAG = "BarcodeImage"
 
 @Composable
 fun BarcodeImage(
@@ -40,15 +42,19 @@ private fun generateBarcodeBitmap(
 ): Bitmap? {
     val zxingFormat = BarcodeFormatMapper.toZxing(format) ?: return null
     return try {
-        val bitMatrix: BitMatrix = MultiFormatWriter().encode(value, zxingFormat, width, height)
-        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                bmp.setPixel(x, y, if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE)
+        val bitMatrix = MultiFormatWriter().encode(value, zxingFormat, width, height)
+        val pixels = IntArray(width * height)
+        for (y in 0 until height) {
+            val offset = y * width
+            for (x in 0 until width) {
+                pixels[offset + x] = if (bitMatrix[x, y]) android.graphics.Color.BLACK else android.graphics.Color.WHITE
             }
         }
+        val bmp = Bitmap.createBitmap(width, height, Bitmap.Config.RGB_565)
+        bmp.setPixels(pixels, 0, width, 0, 0, width, height)
         bmp
-    } catch (_: Exception) {
+    } catch (e: Exception) {
+        Log.w(TAG, "Failed to generate barcode: format=$format, value=$value", e)
         null
     }
 }

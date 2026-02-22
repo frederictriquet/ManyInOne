@@ -28,16 +28,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import fr.triquet.manyinone.data.local.AppDatabase
+import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.triquet.manyinone.data.local.LoyaltyCard
-import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -45,14 +43,13 @@ fun CardDetailScreen(
     cardId: Long,
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
+    viewModel: LoyaltyCardsViewModel = viewModel(),
 ) {
     val context = LocalContext.current
-    val dao = remember { AppDatabase.getInstance(context).loyaltyCardDao() }
     var card by remember { mutableStateOf<LoyaltyCard?>(null) }
-    val scope = rememberCoroutineScope()
 
     LaunchedEffect(cardId) {
-        card = dao.getById(cardId)
+        card = viewModel.getById(cardId)
     }
 
     // Set brightness to max on enter, restore on exit
@@ -89,10 +86,8 @@ fun CardDetailScreen(
                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                         }
                         IconButton(onClick = {
-                            scope.launch {
-                                dao.delete(c)
-                                onBack()
-                            }
+                            viewModel.deleteCard(c)
+                            onBack()
                         }) {
                             Icon(Icons.Default.Delete, contentDescription = "Delete")
                         }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,6 +25,10 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.SwipeToDismissBox
 import androidx.compose.material3.SwipeToDismissBoxValue
 import androidx.compose.material3.Text
@@ -32,6 +37,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import fr.triquet.manyinone.data.local.LoyaltyCard
+import kotlinx.coroutines.launch
 
 @Composable
 fun LoyaltyCardsScreen(
@@ -47,8 +55,11 @@ fun LoyaltyCardsScreen(
     viewModel: LoyaltyCardsViewModel = viewModel(),
 ) {
     val cards by viewModel.cards.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(onClick = onAddCard) {
                 Icon(Icons.Default.Add, contentDescription = "Add card")
@@ -89,13 +100,25 @@ fun LoyaltyCardsScreen(
                     .fillMaxSize()
                     .padding(innerPadding),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                contentPadding = PaddingValues(16.dp),
             ) {
                 items(cards, key = { it.id }) { card ->
                     SwipeToDeleteCard(
                         card = card,
                         onClick = { onCardClick(card.id) },
-                        onDelete = { viewModel.deleteCard(card) },
+                        onDelete = {
+                            viewModel.deleteCard(card)
+                            scope.launch {
+                                val result = snackbarHostState.showSnackbar(
+                                    message = "${card.name} deleted",
+                                    actionLabel = "Undo",
+                                    duration = SnackbarDuration.Short,
+                                )
+                                if (result == SnackbarResult.ActionPerformed) {
+                                    viewModel.addCard(card.name, card.barcodeValue, card.barcodeFormat, card.color)
+                                }
+                            }
+                        },
                     )
                 }
             }
@@ -143,22 +166,13 @@ private fun SwipeToDeleteCard(
     }
 }
 
-private fun contrastTextColor(backgroundColor: Int): Color {
-    val r = (backgroundColor shr 16) and 0xFF
-    val g = (backgroundColor shr 8) and 0xFF
-    val b = backgroundColor and 0xFF
-    // Relative luminance (sRGB)
-    val luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
-    return if (luminance > 0.5) Color.Black else Color.White
-}
-
 @Composable
 private fun LoyaltyCardItem(
     card: LoyaltyCard,
     onClick: () -> Unit,
 ) {
-    val bgColor = Color(card.color.toLong() or 0xFF000000L)
-    val textColor = contrastTextColor(card.color)
+    val bgColor = card.backgroundColor
+    val textColor = card.contrastTextColor
 
     Card(
         modifier = Modifier
