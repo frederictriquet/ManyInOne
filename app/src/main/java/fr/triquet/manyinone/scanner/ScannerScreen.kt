@@ -3,6 +3,8 @@ package fr.triquet.manyinone.scanner
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
 import android.widget.Toast
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
@@ -39,7 +41,9 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import java.util.concurrent.Executors
 
 @Composable
-fun ScannerScreen() {
+fun ScannerScreen(
+    onSaveAsCard: ((value: String, format: String) -> Unit)? = null,
+) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     var scannedValue by remember { mutableStateOf<String?>(null) }
@@ -114,22 +118,39 @@ fun ScannerScreen() {
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (value.startsWith("http://") || value.startsWith("https://")) {
+                        Button(onClick = {
+                            context.startActivity(
+                                Intent(Intent.ACTION_VIEW, Uri.parse(value))
+                            )
+                        }) {
+                            Text("Open")
+                        }
+                    }
                     Button(onClick = {
                         val clipboard =
                             context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                         clipboard.setPrimaryClip(
                             ClipData.newPlainText("scan_result", value)
                         )
-                        Toast.makeText(context, "Copié !", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(context, "Copied!", Toast.LENGTH_SHORT).show()
                     }) {
-                        Text("Copier")
+                        Text("Copy")
                     }
-                    OutlinedButton(onClick = {
-                        scannedValue = null
-                        scannedFormat = null
-                    }) {
-                        Text("Scanner à nouveau")
+                    if (onSaveAsCard != null) {
+                        Button(onClick = {
+                            onSaveAsCard(value, scannedFormat ?: "QR Code")
+                        }) {
+                            Text("Save as card")
+                        }
                     }
+                }
+                Spacer(modifier = Modifier.height(4.dp))
+                OutlinedButton(onClick = {
+                    scannedValue = null
+                    scannedFormat = null
+                }) {
+                    Text("Scan again")
                 }
             }
         }
@@ -151,6 +172,6 @@ private fun barcodeFormatName(format: Int): String {
         Barcode.FORMAT_AZTEC -> "Aztec"
         Barcode.FORMAT_DATA_MATRIX -> "Data Matrix"
         Barcode.FORMAT_CODABAR -> "Codabar"
-        else -> "Code-barres"
+        else -> "Barcode"
     }
 }
