@@ -3,6 +3,7 @@ package fr.triquet.manyinone.navigation
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.QrCodeScanner
+import androidx.compose.material.icons.filled.Radio
 import androidx.compose.ui.graphics.vector.ImageVector
 
 sealed class Screen(
@@ -17,5 +18,10 @@ sealed class Screen(
     data object LoyaltyCards : Screen(
         label = "Cards",
         icon = Icons.Default.CreditCard,
+    )
+
+    data object Radios : Screen(
+        label = "Radios",
+        icon = Icons.Default.Radio,
     )
 }

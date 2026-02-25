@@ -13,6 +13,7 @@ data class LoyaltyCard(
     val barcodeFormat: String,
     val color: Int = DEFAULT_COLOR,
     val createdAt: Long = System.currentTimeMillis(),
+    val sortOrder: Int = 0,
 ) {
     @get:Ignore
     val backgroundColor: Color

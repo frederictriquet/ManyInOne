@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.pager.HorizontalPager
@@ -47,8 +48,10 @@ import androidx.navigation.navArgument
 import fr.triquet.manyinone.loyalty.AddCardScreen
 import fr.triquet.manyinone.loyalty.CardDetailScreen
 import fr.triquet.manyinone.loyalty.LoyaltyCardsScreen
+import fr.triquet.manyinone.BuildConfig
 import fr.triquet.manyinone.navigation.Routes
 import fr.triquet.manyinone.navigation.Screen
+import fr.triquet.manyinone.radio.RadioScreen
 import fr.triquet.manyinone.scanner.ScannerScreen
 import fr.triquet.manyinone.ui.theme.ManyInOneTheme
 import kotlinx.coroutines.launch
@@ -74,23 +77,38 @@ private fun MainApp() {
 
     val showBottomBar = currentRoute == ROUTE_MAIN
 
-    val tabs = listOf(Screen.Scanner, Screen.LoyaltyCards)
+    val tabs = listOf(Screen.Scanner, Screen.LoyaltyCards, Screen.Radios)
     val pagerState = rememberPagerState(pageCount = { tabs.size })
     val scope = rememberCoroutineScope()
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                NavigationBar {
-                    tabs.forEachIndexed { index, screen ->
-                        NavigationBarItem(
-                            selected = pagerState.currentPage == index,
-                            onClick = {
-                                scope.launch { pagerState.animateScrollToPage(index) }
-                            },
-                            icon = { Icon(screen.icon, contentDescription = screen.label) },
-                            label = { Text(screen.label) },
-                        )
+                Column {
+                    val buildDate = remember {
+                        java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.FRANCE)
+                            .format(java.util.Date(BuildConfig.BUILD_TIMESTAMP))
+                    }
+                    Text(
+                        text = "Build: $buildDate",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 4.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                    )
+                    NavigationBar {
+                        tabs.forEachIndexed { index, screen ->
+                            NavigationBarItem(
+                                selected = pagerState.currentPage == index,
+                                onClick = {
+                                    scope.launch { pagerState.animateScrollToPage(index) }
+                                },
+                                icon = { Icon(screen.icon, contentDescription = screen.label) },
+                                label = { Text(screen.label) },
+                            )
+                        }
                     }
                 }
             }
@@ -119,7 +137,11 @@ private fun MainApp() {
                             onCardClick = { id ->
                                 navController.navigate("${Routes.CARD_DETAIL}/$id")
                             },
+                            onCardLongPress = { id ->
+                                navController.navigate("${Routes.EDIT_CARD}/$id")
+                            },
                         )
+                        2 -> RadioScreen()
                     }
                 }
             }

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <!-- Outer rounded square - smaller -->
+  <rect x="56" y="56" width="400" height="400" rx="96" ry="96" fill="#1C1B1F"/>
+
+  <!-- 4 inner rounded squares - tighter towards center -->
+
+  <!-- Top-left - Pink -->
+  <rect x="120" y="120" width="120" height="120" rx="28" ry="28" fill="#C2185B"/>
+
+  <!-- Top-right - Teal -->
+  <rect x="272" y="120" width="120" height="120" rx="28" ry="28" fill="#0097A7"/>
+
+  <!-- Bottom-left - Orange -->
+  <rect x="120" y="272" width="120" height="120" rx="28" ry="28" fill="#F57C00"/>
+
+  <!-- Bottom-right - Purple -->
+  <rect x="272" y="272" width="120" height="120" rx="28" ry="28" fill="#6750A4"/>
+</svg>

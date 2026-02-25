@@ -1,3 +1,10 @@
+import org.gradle.api.provider.ValueSource
+import org.gradle.api.provider.ValueSourceParameters
+
+abstract class BuildTimestampValueSource : ValueSource<String, ValueSourceParameters.None> {
+    override fun obtain(): String = "${System.currentTimeMillis()}L"
+}
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -39,6 +46,16 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
+    }
+
+
+    defaultConfig {
+        buildConfigField(
+            "long",
+            "BUILD_TIMESTAMP",
+            providers.of(BuildTimestampValueSource::class) {}.get(),
+        )
     }
 }
 
@@ -77,6 +94,10 @@ dependencies {
 
     // ZXing
     implementation(libs.zxing.core)
+
+    // Media3
+    implementation(libs.media3.exoplayer)
+    implementation(libs.media3.session)
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
