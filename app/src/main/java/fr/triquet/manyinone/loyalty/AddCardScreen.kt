@@ -2,6 +2,9 @@ package fr.triquet.manyinone.loyalty
 
 import android.Manifest
 import android.content.pm.PackageManager
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.Preview
@@ -29,7 +32,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.PhotoCamera
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
@@ -61,6 +66,10 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.mlkit.vision.barcode.BarcodeScannerOptions
+import com.google.mlkit.vision.barcode.BarcodeScanning
+import com.google.mlkit.vision.barcode.common.Barcode
+import com.google.mlkit.vision.common.InputImage
 import fr.triquet.manyinone.data.local.LoyaltyCard
 import fr.triquet.manyinone.scanner.BarcodeAnalyzer
 import java.util.concurrent.Executors
@@ -82,8 +91,47 @@ fun AddCardScreen(
     var selectedColor by remember { mutableIntStateOf(LoyaltyCard.DEFAULT_COLOR) }
     var showScanner by remember { mutableStateOf(false) }
     var existingCard by remember { mutableStateOf<LoyaltyCard?>(null) }
+    var isGalleryScanning by remember { mutableStateOf(false) }
+    var galleryError by remember { mutableStateOf<String?>(null) }
 
     val context = LocalContext.current
+
+    val galleryLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        isGalleryScanning = true
+        galleryError = null
+        val image = try {
+            InputImage.fromFilePath(context, uri)
+        } catch (_: Exception) {
+            isGalleryScanning = false
+            galleryError = "Impossible de lire l'image"
+            return@rememberLauncherForActivityResult
+        }
+        val scanner = BarcodeScanning.getClient(
+            BarcodeScannerOptions.Builder()
+                .setBarcodeFormats(Barcode.FORMAT_ALL_FORMATS)
+                .build()
+        )
+        scanner.process(image)
+            .addOnSuccessListener { barcodes ->
+                barcodes.firstOrNull()?.let { barcode ->
+                    barcodeValue = barcode.rawValue ?: ""
+                    barcodeFormat = BarcodeFormatMapper.fromMlKit(barcode.format)
+                    galleryError = null
+                } ?: run {
+                    galleryError = "Aucun code-barres trouvé dans l'image"
+                }
+            }
+            .addOnFailureListener {
+                galleryError = "Erreur lors de la lecture de l'image"
+            }
+            .addOnCompleteListener {
+                isGalleryScanning = false
+                scanner.close()
+            }
+    }
 
     if (isEditing) {
         LaunchedEffect(editCardId) {
@@ -179,6 +227,33 @@ fun AddCardScreen(
                     Icon(Icons.Default.PhotoCamera, contentDescription = null)
                     Spacer(modifier = Modifier.padding(start = 8.dp))
                     Text("Scan barcode")
+                }
+                OutlinedButton(
+                    onClick = {
+                        galleryLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    },
+                    enabled = !isGalleryScanning,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    if (isGalleryScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                        )
+                    } else {
+                        Icon(Icons.Default.PhotoLibrary, contentDescription = null)
+                    }
+                    Spacer(modifier = Modifier.padding(start = 8.dp))
+                    Text("Pick from gallery")
+                }
+                galleryError?.let { error ->
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodySmall,
+                    )
                 }
             }
 
