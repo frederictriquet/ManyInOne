@@ -30,7 +30,10 @@ data class RadioUiState(
     val sleepTimerRemainingSeconds: Long = 0,
 )
 
-class RadioViewModel(application: Application) : AndroidViewModel(application) {
+class RadioViewModel(
+    application: Application,
+    testPlayer: Player? = null,
+) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getInstance(application).radioStationDao()
 
@@ -50,7 +53,7 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private var mediaController: MediaController? = null
+    private var mediaController: Player? = null
     private var sleepTimerJob: Job? = null
 
     private val playerListener = object : Player.Listener {
@@ -72,27 +75,32 @@ class RadioViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     init {
-        val sessionToken = SessionToken(
-            application,
-            android.content.ComponentName(application, RadioPlaybackService::class.java),
-        )
-        val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
-        controllerFuture.addListener(
-            {
-                val controller = controllerFuture.get()
-                mediaController = controller
-                controller.addListener(playerListener)
-                val restoredId = controller.currentMediaItem?.mediaId?.toLongOrNull()
-                _playerState.update {
-                    it.copy(
-                        currentStationId = if (controller.isPlaying || controller.playbackState == Player.STATE_BUFFERING) restoredId else null,
-                        isPlaying = controller.isPlaying,
-                        isBuffering = controller.playbackState == Player.STATE_BUFFERING,
-                    )
-                }
-            },
-            MoreExecutors.directExecutor(),
-        )
+        if (testPlayer != null) {
+            setupController(testPlayer)
+        } else {
+            val sessionToken = SessionToken(
+                application,
+                android.content.ComponentName(application, RadioPlaybackService::class.java),
+            )
+            val controllerFuture = MediaController.Builder(application, sessionToken).buildAsync()
+            controllerFuture.addListener(
+                { setupController(controllerFuture.get()) },
+                MoreExecutors.directExecutor(),
+            )
+        }
+    }
+
+    private fun setupController(player: Player) {
+        mediaController = player
+        player.addListener(playerListener)
+        val restoredId = player.currentMediaItem?.mediaId?.toLongOrNull()
+        _playerState.update {
+            it.copy(
+                currentStationId = if (player.isPlaying || player.playbackState == Player.STATE_BUFFERING) restoredId else null,
+                isPlaying = player.isPlaying,
+                isBuffering = player.playbackState == Player.STATE_BUFFERING,
+            )
+        }
     }
 
     fun playStation(station: RadioStation) {

@@ -2,7 +2,9 @@
 
 package fr.triquet.manyinone.radio
 
-import androidx.media3.session.MediaController
+import android.app.Application
+import androidx.media3.common.MediaItem
+import androidx.media3.common.Player
 import app.cash.turbine.test
 import fr.triquet.manyinone.data.local.AppDatabase
 import fr.triquet.manyinone.data.local.RadioStationDao
@@ -11,9 +13,9 @@ import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
-import io.mockk.mockkConstructor
 import io.mockk.mockkObject
 import io.mockk.unmockkAll
+import io.mockk.verify
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -25,11 +27,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import org.junit.runners.JUnit4
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@RunWith(JUnit4::class)
 class RadioViewModelTest {
 
     @get:Rule
@@ -43,6 +43,12 @@ class RadioViewModelTest {
     private val mockDb = mockk<AppDatabase> {
         every { radioStationDao() } returns mockDao
     }
+    private val mockPlayer = mockk<Player>(relaxed = true) {
+        every { isPlaying } returns false
+        every { playbackState } returns Player.STATE_IDLE
+        every { currentMediaItem } returns null
+    }
+
     private lateinit var viewModel: RadioViewModel
 
     @Before
@@ -50,13 +56,7 @@ class RadioViewModelTest {
         mockkObject(AppDatabase.Companion)
         every { AppDatabase.getInstance(any()) } returns mockDb
 
-        // Empêche le binding réel au service Media3
-        mockkConstructor(MediaController.Builder::class)
-        val mockFuture = mockk<com.google.common.util.concurrent.ListenableFuture<MediaController>>(relaxed = true)
-        every { anyConstructed<MediaController.Builder>().buildAsync() } returns mockFuture
-        every { mockFuture.addListener(any(), any()) } answers { /* ne jamais appeler le callback */ }
-
-        viewModel = RadioViewModel(androidx.test.core.app.ApplicationProvider.getApplicationContext())
+        viewModel = RadioViewModel(mockk<Application>(relaxed = true), testPlayer = mockPlayer)
     }
 
     @After
@@ -159,6 +159,79 @@ class RadioViewModelTest {
 
             val last = states.last()
             assertEquals(895L, last.sleepTimerRemainingSeconds)
+        }
+    }
+
+    // ── playStation / togglePlayPause / stop ──────────────────────────────────
+
+    @Test
+    fun `playStation sets currentStationId and calls player`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            viewModel.playStation(station(42, "Test FM"))
+
+            val state = awaitItem()
+            assertEquals(42L, state.currentStationId)
+            verify { mockPlayer.setMediaItem(any<MediaItem>()) }
+            verify { mockPlayer.prepare() }
+            verify { mockPlayer.play() }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `togglePlayPause pauses when playing`() = runTest {
+        every { mockPlayer.isPlaying } returns true
+
+        viewModel.togglePlayPause()
+
+        verify { mockPlayer.pause() }
+    }
+
+    @Test
+    fun `togglePlayPause plays when not playing`() = runTest {
+        every { mockPlayer.isPlaying } returns false
+
+        viewModel.togglePlayPause()
+
+        verify { mockPlayer.play() }
+    }
+
+    @Test
+    fun `stop clears player state`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            // Mettre une station active d'abord
+            viewModel.playStation(station(1, "A"))
+            awaitItem()
+
+            viewModel.stop()
+            val state = awaitItem()
+
+            assertEquals(null, state.currentStationId)
+            assertEquals(false, state.isPlaying)
+            verify { mockPlayer.stop() }
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test
+    fun `deleteStation stops player when deleting current station`() = runTest {
+        viewModel.uiState.test {
+            awaitItem()
+
+            // Simuler station en cours
+            viewModel.playStation(station(1, "Test"))
+            awaitItem()
+
+            viewModel.deleteStation(station(1, "Test"))
+            awaitItem() // stop() met à jour l'état
+
+            advanceUntilIdle()
+            coVerify { mockDao.delete(match { it.id == 1L }) }
+            cancelAndIgnoreRemainingEvents()
         }
     }
 
