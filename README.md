@@ -1,5 +1,8 @@
 # ManyInOne
 
+[![CI](https://github.com/frtriquet/ManyInOne/actions/workflows/ci.yml/badge.svg)](https://github.com/frtriquet/ManyInOne/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/frtriquet/ManyInOne/branch/master/graph/badge.svg)](https://codecov.io/gh/frtriquet/ManyInOne)
+
 Application Android regroupant plusieurs utilitaires du quotidien en une seule app.
 
 ## Captures d'écran
