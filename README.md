@@ -2,6 +2,11 @@
 
 [![CI](https://github.com/frederictriquet/ManyInOne/actions/workflows/ci.yml/badge.svg)](https://github.com/frederictriquet/ManyInOne/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/frederictriquet/ManyInOne/branch/master/graph/badge.svg)](https://codecov.io/gh/frederictriquet/ManyInOne)
+[![Kotlin](https://img.shields.io/badge/Kotlin-2.1.20-7F52FF?logo=kotlin&logoColor=white)](https://kotlinlang.org)
+[![Android](https://img.shields.io/badge/Android-API%2028%2B-3DDC84?logo=android&logoColor=white)](https://developer.android.com)
+[![License](https://img.shields.io/github/license/frederictriquet/ManyInOne)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/frederictriquet/ManyInOne)](https://github.com/frederictriquet/ManyInOne/commits/master)
+[![Repo size](https://img.shields.io/github/repo-size/frederictriquet/ManyInOne)](https://github.com/frederictriquet/ManyInOne)
 
 Application Android regroupant plusieurs utilitaires du quotidien en une seule app.
 
