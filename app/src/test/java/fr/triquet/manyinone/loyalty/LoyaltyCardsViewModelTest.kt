@@ -2,7 +2,7 @@
 
 package fr.triquet.manyinone.loyalty
 
-import androidx.test.core.app.ApplicationProvider
+import android.app.Application
 import fr.triquet.manyinone.data.local.AppDatabase
 import fr.triquet.manyinone.data.local.LoyaltyCard
 import fr.triquet.manyinone.data.local.LoyaltyCardDao
@@ -23,11 +23,9 @@ import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
-import org.robolectric.RobolectricTestRunner
-import org.robolectric.annotation.Config
+import org.junit.runners.JUnit4
 
-@RunWith(RobolectricTestRunner::class)
-@Config(sdk = [34])
+@RunWith(JUnit4::class)
 class LoyaltyCardsViewModelTest {
 
     @get:Rule
@@ -41,6 +39,7 @@ class LoyaltyCardsViewModelTest {
     private val mockDb = mockk<AppDatabase> {
         every { loyaltyCardDao() } returns mockDao
     }
+    private val mockApp = mockk<Application>(relaxed = true)
 
     private lateinit var viewModel: LoyaltyCardsViewModel
 
@@ -48,7 +47,7 @@ class LoyaltyCardsViewModelTest {
     fun setUp() {
         mockkObject(AppDatabase.Companion)
         every { AppDatabase.getInstance(any()) } returns mockDb
-        viewModel = LoyaltyCardsViewModel(ApplicationProvider.getApplicationContext())
+        viewModel = LoyaltyCardsViewModel(mockApp)
     }
 
     @After
@@ -65,10 +64,7 @@ class LoyaltyCardsViewModelTest {
 
     @Test
     fun `cards updates when dao emits`() = runTest {
-        val testCards = listOf(
-            card(id = 1, name = "A"),
-            card(id = 2, name = "B"),
-        )
+        val testCards = listOf(card(id = 1, name = "A"), card(id = 2, name = "B"))
         cardsFlow.value = testCards
         advanceUntilIdle()
 
@@ -138,20 +134,16 @@ class LoyaltyCardsViewModelTest {
     @Test
     fun `deleteCard removes from dao`() = runTest {
         val card = card(1, "Test")
-
         viewModel.deleteCard(card)
         advanceUntilIdle()
-
         coVerify { mockDao.delete(card) }
     }
 
     @Test
     fun `updateCard updates in dao`() = runTest {
         val card = card(1, "Test")
-
         viewModel.updateCard(card)
         advanceUntilIdle()
-
         coVerify { mockDao.update(card) }
     }
 
@@ -160,8 +152,8 @@ class LoyaltyCardsViewModelTest {
     @Test
     fun `commitCardOrder updates sortOrder for cards out of position`() = runTest {
         cardsFlow.value = listOf(
-            card(id = 1, name = "A", sortOrder = 1),  // devrait être à 0
-            card(id = 2, name = "B", sortOrder = 0),  // devrait être à 1
+            card(id = 1, name = "A", sortOrder = 1),
+            card(id = 2, name = "B", sortOrder = 0),
         )
         advanceUntilIdle()
 

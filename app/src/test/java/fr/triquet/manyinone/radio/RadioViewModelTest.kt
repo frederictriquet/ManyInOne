@@ -3,7 +3,6 @@
 package fr.triquet.manyinone.radio
 
 import androidx.media3.session.MediaController
-import androidx.test.core.app.ApplicationProvider
 import app.cash.turbine.test
 import fr.triquet.manyinone.data.local.AppDatabase
 import fr.triquet.manyinone.data.local.RadioStationDao
@@ -44,7 +43,6 @@ class RadioViewModelTest {
     private val mockDb = mockk<AppDatabase> {
         every { radioStationDao() } returns mockDao
     }
-
     private lateinit var viewModel: RadioViewModel
 
     @Before
@@ -58,7 +56,7 @@ class RadioViewModelTest {
         every { anyConstructed<MediaController.Builder>().buildAsync() } returns mockFuture
         every { mockFuture.addListener(any(), any()) } answers { /* ne jamais appeler le callback */ }
 
-        viewModel = RadioViewModel(ApplicationProvider.getApplicationContext())
+        viewModel = RadioViewModel(androidx.test.core.app.ApplicationProvider.getApplicationContext())
     }
 
     @After
@@ -71,10 +69,10 @@ class RadioViewModelTest {
     @Test
     fun `moveStation moves item from first to last`() = runTest {
         viewModel.uiState.test {
-            awaitItem() // état initial
+            awaitItem()
 
             stationsFlow.value = listOf(station(1, "A"), station(2, "B"), station(3, "C"))
-            awaitItem() // mise à jour stations
+            awaitItem()
 
             viewModel.moveStation(0, 2)
 
@@ -95,7 +93,6 @@ class RadioViewModelTest {
             viewModel.moveStation(0, 10)
             viewModel.moveStation(-1, 0)
 
-            // Aucun nouvel item émis
             expectNoEvents()
             cancelAndIgnoreRemainingEvents()
         }
@@ -106,13 +103,13 @@ class RadioViewModelTest {
     @Test
     fun `setSleepTimer OFF resets an active timer`() = runTest {
         viewModel.uiState.test {
-            awaitItem() // initial
+            awaitItem()
 
             viewModel.setSleepTimer(SleepTimerOption.MIN_30)
-            awaitItem() // MIN_30 actif
+            awaitItem()
 
             viewModel.setSleepTimer(SleepTimerOption.OFF)
-            val state = awaitItem() // remis à OFF
+            val state = awaitItem()
             assertEquals(SleepTimerOption.OFF, state.sleepTimerOption)
             assertEquals(0L, state.sleepTimerRemainingSeconds)
             cancelAndIgnoreRemainingEvents()
@@ -152,15 +149,13 @@ class RadioViewModelTest {
 
     @Test
     fun `setSleepTimer countdown decrements remaining seconds`() {
-        // On partage le scheduler entre runTest et mainDispatcherRule pour que
-        // advanceTimeBy fasse avancer les delay() du viewModelScope
         runTest(mainDispatcherRule.testDispatcher) {
             val states = mutableListOf<RadioUiState>()
             backgroundScope.launch { viewModel.uiState.collect { states.add(it) } }
 
             viewModel.setSleepTimer(SleepTimerOption.MIN_15) // remaining = 900
 
-            advanceTimeBy(5_001) // 5 ticks complétés (exclusif) → remaining = 895
+            advanceTimeBy(5_001) // 5 ticks complétés → remaining = 895
 
             val last = states.last()
             assertEquals(895L, last.sleepTimerRemainingSeconds)
@@ -184,20 +179,16 @@ class RadioViewModelTest {
     @Test
     fun `deleteStation removes from dao`() = runTest {
         val s = station(1, "Test")
-
         viewModel.deleteStation(s)
         advanceUntilIdle()
-
         coVerify { mockDao.delete(s) }
     }
 
     @Test
     fun `updateStation updates in dao`() = runTest {
         val s = station(1, "Test")
-
         viewModel.updateStation(s)
         advanceUntilIdle()
-
         coVerify { mockDao.update(s) }
     }
 

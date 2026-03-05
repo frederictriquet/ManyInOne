@@ -41,6 +41,7 @@ android {
         }
         debug {
             enableUnitTestCoverage = true
+            enableAndroidTestCoverage = true
         }
     }
 
@@ -117,4 +118,7 @@ dependencies {
     testImplementation(libs.androidx.test.core)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+    androidTestImplementation(libs.androidx.test.core)
+    androidTestImplementation(libs.kotlinx.coroutines.test)
+    androidTestImplementation(libs.room.testing)
 }
