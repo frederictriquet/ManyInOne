@@ -100,10 +100,9 @@ class RadioScreenTest {
 
         composeTestRule.onNodeWithText("Ajouter une radio").performClick()
 
-        composeTestRule.onNodeWithText("Ajouter une radio", useUnmergedTree = true)
-            .assertIsDisplayed()
         composeTestRule.onNodeWithText("Sauvegarder").assertIsDisplayed()
         composeTestRule.onNodeWithText("Annuler").assertIsDisplayed()
+        composeTestRule.onNodeWithText("Nom").assertIsDisplayed()
     }
 
     @Test
