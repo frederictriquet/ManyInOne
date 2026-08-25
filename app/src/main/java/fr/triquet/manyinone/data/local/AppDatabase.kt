@@ -3,6 +3,7 @@ package fr.triquet.manyinone.data.local
 import android.content.Context
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.VisibleForTesting
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -33,6 +34,22 @@ abstract class AppDatabase : RoomDatabase() {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: buildDatabase(context).also { INSTANCE = it }
             }
+        }
+
+        /** Closes the singleton so the next getInstance reopens the database. */
+        @VisibleForTesting
+        fun closeForTests() {
+            synchronized(this) {
+                INSTANCE?.close()
+                INSTANCE = null
+            }
+        }
+
+        /** Closes the singleton and wipes the database file. */
+        @VisibleForTesting
+        fun resetForTests(context: Context) {
+            closeForTests()
+            context.applicationContext.deleteDatabase(DB_NAME)
         }
 
         private fun buildDatabase(context: Context): AppDatabase {
@@ -79,18 +96,49 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        /** Fills an empty station list with [DEFAULT_STATIONS]. No-op otherwise. */
+        private fun seedDefaultStations(db: SupportSQLiteDatabase) {
+            val count = db.query("SELECT COUNT(*) FROM radio_stations").use { cursor ->
+                if (cursor.moveToFirst()) cursor.getInt(0) else 0
+            }
+            if (count > 0) return
+
+            DEFAULT_STATIONS.forEach { station ->
+                db.execSQL(
+                    """INSERT INTO radio_stations (name, streamUrl, description, createdAt, sortOrder)
+                       VALUES (?, ?, ?, ?, ?)""",
+                    arrayOf(
+                        station.name,
+                        station.streamUrl,
+                        station.description,
+                        station.createdAt,
+                        station.sortOrder,
+                    ),
+                )
+            }
+            Log.i("AppDatabase", "Inserted ${DEFAULT_STATIONS.size} default radio stations")
+        }
+
         private fun createDatabase(context: Context): AppDatabase {
             return Room.databaseBuilder(context, AppDatabase::class.java, DB_NAME)
                 .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
                 .addCallback(object : Callback() {
                     override fun onOpen(db: SupportSQLiteDatabase) {
                         super.onOpen(db)
-                        INSTANCE?.let { database ->
-                            CoroutineScope(Dispatchers.IO).launch {
-                                val dao = database.radioStationDao()
-                                if (dao.count() == 0) {
-                                    DEFAULT_STATIONS.forEach { dao.insert(it) }
-                                }
+                        // Writes through `db` rather than the DAO: this runs while the
+                        // database is being opened, before INSTANCE is assigned.
+                        try {
+                            seedDefaultStations(db)
+                        } catch (e: Exception) {
+                            // Swallowed on purpose: letting it escape would trip the
+                            // catch in buildDatabase, which deletes the user's data.
+                            Log.e("AppDatabase", "Failed to insert the default radio stations", e)
+                            CoroutineScope(Dispatchers.Main).launch {
+                                Toast.makeText(
+                                    context,
+                                    "Impossible d'ajouter les radios par défaut : ${e.message}",
+                                    Toast.LENGTH_LONG,
+                                ).show()
                             }
                         }
                     }

@@ -14,7 +14,7 @@ plugins {
 
 // Version code, bumped automatically by the pre-commit hook (.githooks/pre-commit).
 // Keep the declaration on a single line: the hook matches it literally.
-val appVersionCode = 4
+val appVersionCode = 5
 val appVersionName = "1.0"
 
 // Release signing material comes either from a local `keystore.properties`
