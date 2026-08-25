@@ -90,7 +90,12 @@ sans lui, aucune mise à jour de l'app ne pourra être installée par-dessus une
 
 ### Build local signé
 
-Créer `keystore.properties` à la racine (ignoré par git) :
+```bash
+./scripts/setup_keystore_properties.sh
+```
+
+Le script demande le mot de passe sans l'afficher, vérifie qu'il ouvre le keystore,
+détecte l'alias et écrit `keystore.properties` (ignoré par git, permissions `0600`) :
 
 ```properties
 storeFile=release.jks
@@ -100,7 +105,9 @@ keyPassword=...
 ```
 
 Puis `./gradlew assembleRelease`. Sans ce fichier ni les variables d'environnement
-correspondantes, le build release retombe sur la clé de debug et l'affiche en warning.
+correspondantes, le build release retombe sur la clé de debug et l'affiche en warning
+— l'APK produit porte alors une signature différente de ceux de la CI et ne peut pas
+s'installer par-dessus sans désinstallation préalable.
 
 ### Secrets GitHub Actions
 
