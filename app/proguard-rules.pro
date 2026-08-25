@@ -25,3 +25,9 @@
 # Media3
 -keep class androidx.media3.** { *; }
 -dontwarn androidx.media3.**
+
+# ViewModels are instantiated reflectively by ViewModelProvider: R8 cannot see
+# those constructors being called and would strip them.
+-keep class * extends androidx.lifecycle.ViewModel {
+    <init>(...);
+}

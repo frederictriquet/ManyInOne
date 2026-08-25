@@ -30,7 +30,9 @@ data class RadioUiState(
     val sleepTimerRemainingSeconds: Long = 0,
 )
 
-class RadioViewModel(
+// @JvmOverloads generates the (Application) constructor that AndroidViewModelFactory
+// looks up reflectively; without it, viewModel() fails with NoSuchMethodException.
+class RadioViewModel @JvmOverloads constructor(
     application: Application,
     testPlayer: Player? = null,
 ) : AndroidViewModel(application) {
