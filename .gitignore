@@ -22,3 +22,7 @@ keystore.properties
 *.jks
 *.keystore
 pass.txt
+
+# Python
+__pycache__/
+*.pyc

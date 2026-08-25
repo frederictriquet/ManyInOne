@@ -2,7 +2,11 @@ package fr.triquet.manyinone.loyalty
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import fr.triquet.manyinone.data.local.AppDatabase
 import fr.triquet.manyinone.data.local.LoyaltyCard
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -58,6 +62,14 @@ class LoyaltyCardsViewModel(application: Application) : AndroidViewModel(applica
                     dao.updateSortOrder(card.id, index)
                 }
             }
+        }
+    }
+
+    companion object {
+        // Instantiating through this factory keeps the constructor reachable for R8,
+        // unlike viewModel()'s reflective lookup.
+        fun factory(): ViewModelProvider.Factory = viewModelFactory {
+            initializer { LoyaltyCardsViewModel(this[APPLICATION_KEY] as Application) }
         }
     }
 }

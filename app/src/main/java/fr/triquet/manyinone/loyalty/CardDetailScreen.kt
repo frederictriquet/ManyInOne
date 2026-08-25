@@ -43,7 +43,7 @@ fun CardDetailScreen(
     cardId: Long,
     onBack: () -> Unit,
     onEdit: (Long) -> Unit,
-    viewModel: LoyaltyCardsViewModel = viewModel(),
+    viewModel: LoyaltyCardsViewModel = viewModel(factory = LoyaltyCardsViewModel.factory()),
 ) {
     val context = LocalContext.current
     var card by remember { mutableStateOf<LoyaltyCard?>(null) }

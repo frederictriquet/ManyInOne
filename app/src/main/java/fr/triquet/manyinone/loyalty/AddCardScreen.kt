@@ -81,7 +81,7 @@ fun AddCardScreen(
     initialFormat: String? = null,
     editCardId: Long? = null,
     onBack: () -> Unit,
-    viewModel: LoyaltyCardsViewModel = viewModel(),
+    viewModel: LoyaltyCardsViewModel = viewModel(factory = LoyaltyCardsViewModel.factory()),
 ) {
     val isEditing = editCardId != null
 

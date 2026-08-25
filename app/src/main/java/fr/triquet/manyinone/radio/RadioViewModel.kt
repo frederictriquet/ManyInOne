@@ -2,7 +2,11 @@ package fr.triquet.manyinone.radio
 
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
+import androidx.lifecycle.ViewModelProvider.AndroidViewModelFactory.Companion.APPLICATION_KEY
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
@@ -30,11 +34,11 @@ data class RadioUiState(
     val sleepTimerRemainingSeconds: Long = 0,
 )
 
-// @JvmOverloads generates the (Application) constructor that AndroidViewModelFactory
-// looks up reflectively; without it, viewModel() fails with NoSuchMethodException.
-class RadioViewModel @JvmOverloads constructor(
+class RadioViewModel(
     application: Application,
-    testPlayer: Player? = null,
+    // Null in production: the real player is a MediaController built asynchronously
+    // in init. Tests pass a ready-made player to skip the service round-trip.
+    player: Player? = null,
 ) : AndroidViewModel(application) {
 
     private val dao = AppDatabase.getInstance(application).radioStationDao()
@@ -77,8 +81,8 @@ class RadioViewModel @JvmOverloads constructor(
     }
 
     init {
-        if (testPlayer != null) {
-            setupController(testPlayer)
+        if (player != null) {
+            setupController(player)
         } else {
             val sessionToken = SessionToken(
                 application,
@@ -216,6 +220,14 @@ class RadioViewModel @JvmOverloads constructor(
         mediaController?.run {
             removeListener(playerListener)
             release()
+        }
+    }
+
+    companion object {
+        // Instantiating through this factory keeps the constructor reachable for R8,
+        // unlike viewModel()'s reflective lookup.
+        fun factory(player: Player? = null): ViewModelProvider.Factory = viewModelFactory {
+            initializer { RadioViewModel(this[APPLICATION_KEY] as Application, player) }
         }
     }
 }

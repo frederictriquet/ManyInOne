@@ -137,7 +137,31 @@ jobs:
         if: always()
         run: rm -f "$GITHUB_WORKSPACE/release.jks"
 
+      # R8 strips constructors that only reflection ever calls. Fails fast with a
+      # precise message before the slower emulator run.
+      - name: Check ViewModel constructors survived R8
+        run: python3 scripts/check_release_viewmodels.py app/build/outputs/apk/release/app-release.apk
+
+      - name: Enable KVM (accélération matérielle émulateur)
+        run: |
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      # The debug build cannot reproduce R8-only failures, so the minified APK is
+      # installed and driven for real before it is published.
+      - name: Release smoke test on emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: Nexus 6
+          disable-animations: true
+          script: python3 scripts/release_smoke_test.py app/build/outputs/apk/release/app-release.apk
+
+      # Uploaded even on failure, so a rejected build can still be inspected.
       - name: Upload APK
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: manyinone-release-apk
@@ -147,6 +171,7 @@ jobs:
 
       # Needed to deobfuscate release stack traces with `retrace`.
       - name: Upload R8 mapping
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: manyinone-release-mapping

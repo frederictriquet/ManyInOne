@@ -48,7 +48,7 @@ fun LoyaltyCardsScreen(
     onAddCard: () -> Unit,
     onCardClick: (Long) -> Unit,
     onCardLongPress: (Long) -> Unit = {},
-    viewModel: LoyaltyCardsViewModel = viewModel(),
+    viewModel: LoyaltyCardsViewModel = viewModel(factory = LoyaltyCardsViewModel.factory()),
 ) {
     val cards by viewModel.cards.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }

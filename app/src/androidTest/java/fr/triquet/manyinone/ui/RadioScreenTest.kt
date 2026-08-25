@@ -58,7 +58,7 @@ class RadioScreenTest {
 
     private fun viewModel() = RadioViewModel(
         ApplicationProvider.getApplicationContext(),
-        testPlayer = mockPlayer,
+        player = mockPlayer,
     )
 
     // ── Rendu initial ─────────────────────────────────────────────────────────

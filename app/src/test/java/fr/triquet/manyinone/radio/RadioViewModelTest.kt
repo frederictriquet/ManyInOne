@@ -56,7 +56,7 @@ class RadioViewModelTest {
         mockkObject(AppDatabase.Companion)
         every { AppDatabase.getInstance(any()) } returns mockDb
 
-        viewModel = RadioViewModel(mockk<Application>(relaxed = true), testPlayer = mockPlayer)
+        viewModel = RadioViewModel(mockk<Application>(relaxed = true), player = mockPlayer)
     }
 
     @After

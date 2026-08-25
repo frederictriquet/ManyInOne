@@ -58,7 +58,7 @@ import fr.triquet.manyinone.ui.draggedItem
 import fr.triquet.manyinone.ui.rememberDragDropListState
 
 @Composable
-fun RadioScreen(viewModel: RadioViewModel = viewModel()) {
+fun RadioScreen(viewModel: RadioViewModel = viewModel(factory = RadioViewModel.factory())) {
     val state by viewModel.uiState.collectAsStateWithLifecycle()
     var showDialog by remember { mutableStateOf(false) }
     var editingStation by remember { mutableStateOf<RadioStation?>(null) }
