@@ -70,6 +70,69 @@ cd ManyInOne
 
 Ou ouvrir directement dans Android Studio et lancer sur un émulateur / appareil.
 
+## Télécharger l'APK
+
+Chaque push sur `master` produit un APK release signé, publié en artifact du run CI :
+[Actions → CI → dernier run → *manyinone-release-apk*](https://github.com/frederictriquet/ManyInOne/actions/workflows/ci.yml)
+(le téléchargement nécessite d'être connecté à GitHub ; rétention 90 jours).
+
+## Signature de l'APK
+
+### Générer un keystore
+
+```bash
+keytool -genkeypair -v -keystore release.jks -keyalg RSA -keysize 2048 \
+  -validity 10000 -alias manyinone
+```
+
+Conserver `release.jks` hors du dépôt (il est ignoré par `.gitignore`) et le sauvegarder :
+sans lui, aucune mise à jour de l'app ne pourra être installée par-dessus une version déjà publiée.
+
+### Build local signé
+
+Créer `keystore.properties` à la racine (ignoré par git) :
+
+```properties
+storeFile=release.jks
+storePassword=...
+keyAlias=manyinone
+keyPassword=...
+```
+
+Puis `./gradlew assembleRelease`. Sans ce fichier ni les variables d'environnement
+correspondantes, le build release retombe sur la clé de debug et l'affiche en warning.
+
+### Secrets GitHub Actions
+
+À créer dans *Settings → Secrets and variables → Actions* :
+
+| Secret | Valeur |
+|---|---|
+| `KEYSTORE_BASE64` | `base64 -i release.jks \| pbcopy` |
+| `KEYSTORE_PASSWORD` | mot de passe du keystore |
+| `KEY_ALIAS` | alias de la clé (`manyinone`) |
+| `KEY_PASSWORD` | mot de passe de la clé |
+
+Le job `build-apk` échoue explicitement si `KEYSTORE_BASE64` est absent.
+
+## Versionnement
+
+`versionCode` est incrémenté automatiquement à chaque commit par le hook
+`.githooks/pre-commit`, et `versionName` en dérive (`1.0.<versionCode>`).
+Après un clone, activer les hooks :
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Sans cette commande le hook est inerte : `core.hooksPath` est une configuration
+locale, elle ne se propage pas avec le dépôt.
+
+Le hook ne touche pas à la version pendant un merge, un rebase ou un cherry-pick,
+pour ne pas réécrire des commits rejoués. Pour l'ignorer ponctuellement :
+`git commit --no-verify`. Le socle `1.0` (`appVersionName` dans
+`app/build.gradle.kts`) reste modifié à la main lors des jalons.
+
 ## Permissions requises
 
 | Permission | Usage |

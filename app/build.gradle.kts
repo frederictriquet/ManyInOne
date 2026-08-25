@@ -1,3 +1,4 @@
+import java.util.Properties
 import org.gradle.api.provider.ValueSource
 import org.gradle.api.provider.ValueSourceParameters
 
@@ -9,6 +10,39 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.ksp)
+}
+
+// Version code, bumped automatically by the pre-commit hook (.githooks/pre-commit).
+// Keep the declaration on a single line: the hook matches it literally.
+val appVersionCode = 2
+val appVersionName = "1.0"
+
+// Release signing material comes either from a local `keystore.properties`
+// (not versioned) or from environment variables set by the CI.
+val keystorePropertiesFile = rootProject.file("keystore.properties")
+val keystoreProperties = Properties().apply {
+    if (keystorePropertiesFile.exists()) {
+        keystorePropertiesFile.inputStream().use { load(it) }
+    }
+}
+
+fun signingSetting(propertyKey: String, environmentKey: String): String? =
+    keystoreProperties.getProperty(propertyKey)?.takeIf { it.isNotBlank() }
+        ?: System.getenv(environmentKey)?.takeIf { it.isNotBlank() }
+
+val releaseStorePath = signingSetting("storeFile", "KEYSTORE_FILE")
+val releaseStorePassword = signingSetting("storePassword", "KEYSTORE_PASSWORD")
+val releaseKeyAlias = signingSetting("keyAlias", "KEY_ALIAS")
+val releaseKeyPassword = signingSetting("keyPassword", "KEY_PASSWORD")
+val releaseStore = releaseStorePath?.let { rootProject.file(it) }
+
+val releaseSigningIssue: String? = when {
+    releaseStorePath == null -> "storeFile / KEYSTORE_FILE is not set"
+    releaseStore?.exists() != true -> "keystore file not found: ${releaseStore?.absolutePath}"
+    releaseStorePassword == null -> "storePassword / KEYSTORE_PASSWORD is not set"
+    releaseKeyAlias == null -> "keyAlias / KEY_ALIAS is not set"
+    releaseKeyPassword == null -> "keyPassword / KEY_PASSWORD is not set"
+    else -> null
 }
 
 android {
@@ -23,10 +57,21 @@ android {
         applicationId = "fr.triquet.manyinone"
         minSdk = 28
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = "$appVersionName.$appVersionCode"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    }
+
+    signingConfigs {
+        if (releaseSigningIssue == null) {
+            create("release") {
+                storeFile = releaseStore
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
     }
 
     buildTypes {
@@ -37,7 +82,15 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (releaseSigningIssue == null) {
+                signingConfigs.getByName("release")
+            } else {
+                logger.warn(
+                    "WARNING: release build falls back to the debug signing key " +
+                        "($releaseSigningIssue). The produced APK must not be distributed."
+                )
+                signingConfigs.getByName("debug")
+            }
         }
         debug {
             enableUnitTestCoverage = true

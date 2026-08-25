@@ -1,0 +1,46 @@
+#!/bin/sh
+#
+# Bumps the app version code on every commit, so each build pushed to GitHub
+# carries a distinct version. Install with:
+#
+#   git config core.hooksPath .githooks
+#
+# Bypass for a single commit with `git commit --no-verify`.
+
+set -e
+
+GRADLE_FILE="app/build.gradle.kts"
+
+# Replayed commits (merge, rebase, cherry-pick) must keep their original
+# version code, otherwise every rebase rewrites it.
+GIT_DIR_PATH=$(git rev-parse --git-dir)
+if [ -f "$GIT_DIR_PATH/MERGE_HEAD" ] ||
+   [ -f "$GIT_DIR_PATH/CHERRY_PICK_HEAD" ] ||
+   [ -d "$GIT_DIR_PATH/rebase-merge" ] ||
+   [ -d "$GIT_DIR_PATH/rebase-apply" ]; then
+    echo "pre-commit: merge/rebase in progress, version code left untouched."
+    exit 0
+fi
+
+if [ ! -f "$GRADLE_FILE" ]; then
+    echo "pre-commit ERROR: $GRADLE_FILE not found, cannot bump the version code." >&2
+    echo "pre-commit ERROR: run git from the repository root, or commit with --no-verify." >&2
+    exit 1
+fi
+
+CURRENT=$(sed -n 's/^val appVersionCode = \([0-9]\{1,\}\)$/\1/p' "$GRADLE_FILE")
+
+if [ -z "$CURRENT" ]; then
+    echo "pre-commit ERROR: no 'val appVersionCode = <number>' line in $GRADLE_FILE." >&2
+    echo "pre-commit ERROR: restore that declaration, or commit with --no-verify." >&2
+    exit 1
+fi
+
+NEXT=$((CURRENT + 1))
+
+TMP_FILE="$GRADLE_FILE.versionbump.tmp"
+sed "s/^val appVersionCode = $CURRENT$/val appVersionCode = $NEXT/" "$GRADLE_FILE" > "$TMP_FILE"
+mv "$TMP_FILE" "$GRADLE_FILE"
+
+git add "$GRADLE_FILE"
+echo "pre-commit: version code $CURRENT -> $NEXT"
