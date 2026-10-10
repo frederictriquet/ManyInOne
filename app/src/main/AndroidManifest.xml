@@ -30,6 +30,12 @@
             </intent-filter>
         </activity>
 
+        <!-- Asks Play Services to fetch the barcode model at install time rather than
+             on the first scan, so the scanner is ready when the user opens it. -->
+        <meta-data
+            android:name="com.google.mlkit.vision.DEPENDENCIES"
+            android:value="barcode" />
+
         <service
             android:name=".radio.RadioPlaybackService"
             android:foregroundServiceType="mediaPlayback"

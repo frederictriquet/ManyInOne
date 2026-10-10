@@ -1,5 +1,6 @@
 package fr.triquet.manyinone.scanner
 
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.ExperimentalGetImage
 import androidx.camera.core.ImageAnalysis
@@ -10,8 +11,13 @@ import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 
 class BarcodeAnalyzer(
-    private val onBarcodeDetected: (List<Barcode>) -> Unit
+    private val onBarcodeDetected: (List<Barcode>) -> Unit,
+    // Scanning runs on Play Services, so it can fail when the barcode module has not
+    // been downloaded yet. Reported instead of leaving a camera that detects nothing.
+    private val onError: (Throwable) -> Unit = {},
 ) : ImageAnalysis.Analyzer {
+
+    private var errorReported = false
 
     private val scanner = BarcodeScanning.getClient(
         BarcodeScannerOptions.Builder()
@@ -35,6 +41,14 @@ class BarcodeAnalyzer(
             .addOnSuccessListener { barcodes ->
                 if (barcodes.isNotEmpty()) {
                     onBarcodeDetected(barcodes)
+                }
+            }
+            .addOnFailureListener { error ->
+                Log.e("BarcodeAnalyzer", "Barcode scanning failed", error)
+                // Every frame fails the same way; report once, not sixty times a second.
+                if (!errorReported) {
+                    errorReported = true
+                    onError(error)
                 }
             }
             .addOnCompleteListener {

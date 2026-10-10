@@ -59,6 +59,8 @@ fun ScannerScreen(
     onSaveAsCard: ((value: String, format: String) -> Unit)? = null,
 ) {
     val context = LocalContext.current
+    // The analyzer runs off the main thread; toasts must be posted back to it.
+    val mainHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
     val lifecycleOwner = LocalLifecycleOwner.current
     var scannedValue by remember { mutableStateOf<String?>(null) }
     var scannedFormat by remember { mutableStateOf<String?>(null) }
@@ -121,12 +123,23 @@ fun ScannerScreen(
                         .also {
                             it.setAnalyzer(
                                 analysisExecutor,
-                                BarcodeAnalyzer { barcodes ->
-                                    barcodes.firstOrNull()?.let { barcode ->
-                                        scannedValue = barcode.rawValue
-                                        scannedFormat = BarcodeFormatMapper.fromMlKit(barcode.format)
-                                    }
-                                }
+                                BarcodeAnalyzer(
+                                    onBarcodeDetected = { barcodes ->
+                                        barcodes.firstOrNull()?.let { barcode ->
+                                            scannedValue = barcode.rawValue
+                                            scannedFormat = BarcodeFormatMapper.fromMlKit(barcode.format)
+                                        }
+                                    },
+                                    onError = { error ->
+                                        mainHandler.post {
+                                            Toast.makeText(
+                                                context,
+                                                "Scanner indisponible : ${error.message ?: "module de détection non installé"}",
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    },
+                                )
                             )
                         }
 

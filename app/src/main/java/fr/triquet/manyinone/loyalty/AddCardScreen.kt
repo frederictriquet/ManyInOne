@@ -2,6 +2,7 @@ package fr.triquet.manyinone.loyalty
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -380,6 +381,8 @@ private fun EmbeddedScanner(
     onScanned: (value: String, format: String) -> Unit,
 ) {
     val context = LocalContext.current
+    // The analyzer runs off the main thread; toasts must be posted back to it.
+    val scanErrorHandler = remember { android.os.Handler(android.os.Looper.getMainLooper()) }
     val lifecycleOwner = LocalLifecycleOwner.current
     val analysisExecutor = remember { Executors.newSingleThreadExecutor() }
 
@@ -417,13 +420,24 @@ private fun EmbeddedScanner(
                         .also {
                             it.setAnalyzer(
                                 analysisExecutor,
-                                BarcodeAnalyzer { barcodes ->
-                                    barcodes.firstOrNull()?.let { barcode ->
-                                        val value = barcode.rawValue ?: return@BarcodeAnalyzer
-                                        val format = BarcodeFormatMapper.fromMlKit(barcode.format)
-                                        onScanned(value, format)
-                                    }
-                                },
+                                BarcodeAnalyzer(
+                                    onBarcodeDetected = { barcodes ->
+                                        barcodes.firstOrNull()?.let { barcode ->
+                                            val value = barcode.rawValue ?: return@let
+                                            val format = BarcodeFormatMapper.fromMlKit(barcode.format)
+                                            onScanned(value, format)
+                                        }
+                                    },
+                                    onError = { error ->
+                                        scanErrorHandler.post {
+                                            Toast.makeText(
+                                                context,
+                                                "Scanner indisponible : ${error.message ?: "module de détection non installé"}",
+                                                Toast.LENGTH_LONG,
+                                            ).show()
+                                        }
+                                    },
+                                ),
                             )
                         }
 

@@ -16,7 +16,7 @@ composeBom = "2024.12.01"
 activityCompose = "1.9.3"
 lifecycleRuntimeCompose = "2.8.7"
 camerax = "1.4.1"
-mlkitBarcode = "17.3.0"
+mlkitBarcode = "18.3.1"
 navigationCompose = "2.8.5"
 room = "2.8.4"
 zxing = "3.5.3"
@@ -60,7 +60,9 @@ camerax-lifecycle = { group = "androidx.camera", name = "camera-lifecycle", vers
 camerax-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 
 # ML Kit Barcode
-mlkit-barcode = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkitBarcode" }
+# Unbundled: the scanning engine and models ship with Google Play Services instead
+# of the APK, which keeps libbarhopper_v3.so (20 MB across ABIs) out of the build.
+mlkit-barcode = { group = "com.google.android.gms", name = "play-services-mlkit-barcode-scanning", version.ref = "mlkitBarcode" }
 
 # Room
 room-runtime = { group = "androidx.room", name = "room-runtime", version.ref = "room" }
